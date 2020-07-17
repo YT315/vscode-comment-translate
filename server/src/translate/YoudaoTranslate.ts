@@ -1,38 +1,17 @@
 import { BaseTranslate, ITranslateOptions } from './Translate';
 import request from '../util/request-promise';
 const querystring = require('querystring');
-const GoogleToken: IGetToken = require('@vitalets/google-translate-token');
-interface IGetToken {
-    get(text: string, opts: {
-        tld?: string
-    }): Promise<{
-        name: string,
-        value: string
-    }>;
-}
 
-//免费API https://github.com/Selection-Translator/translation.js/tree/master/src
-export class GoogleTranslate extends BaseTranslate {
+export class YoudaoTranslate extends BaseTranslate {
     private _requestErrorTime: number = 0;
     async _request(content: string, { from = 'auto', to = 'auto' }: ITranslateOptions): Promise<string> {
-        let tld = 'cn';
-        let token = await GoogleToken.get(content, { tld });
-        let url = 'https://translate.google.' + tld + '/translate_a/single';
+        let url = 'http://fanyi.youdao.com/translate';
+        from=to
         let data: any = {
-            client: 'gtx',
-            sl: from,
-            tl: to,
-            hl: to,
-            dt: ['at', 'bd', 'ex', 'ld', 'md', 'qca', 'rw', 'rm', 'ss', 't'],
-            ie: 'UTF-8',
-            oe: 'UTF-8',
-            otf: 1,
-            ssel: 0,
-            tsel: 0,
-            kc: 7,
-            q: content
+            doctype: 'json',
+            type: 'AUTO',
+            i: content
         };
-        data[token.name] = token.value;
         url = url + '?' + querystring.stringify(data);
         let res = await request(url, {
             json: true, timeout: 10000, headers: {
@@ -40,17 +19,18 @@ export class GoogleTranslate extends BaseTranslate {
             }
         });
         
-        let sentences = res[0];
+        
+        let sentences = res.translateResult;
         if (!sentences || !(sentences instanceof Array)) {
             return '';
         }
         let result = sentences
             .map(([trans]) => {
                 if (trans) {
-                    return trans.replace(/((\/|\*|-) )/g, '$2');
+                    return trans.tgt
                 }
             })
-            .join('');
+            .join('\n');
         console.log("res",result);
         return result;
     }
